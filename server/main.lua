@@ -367,7 +367,12 @@ QBCore.Functions.CreateCallback('mdt:server:GetProfileData', function(source, cb
 	if type(target.charinfo) == 'string' then target.charinfo = json.decode(target.charinfo) end
 	if type(target.metadata) == 'string' then target.metadata = json.decode(target.metadata) end
 
-	local licencesdata = target.metadata['licences'] or Config.Licenses
+	local licencesdata = target.metadata['licences'] or {
+        ['driver'] = false,
+        ['business'] = false,
+        ['weapon'] = false,
+		['pilot'] = false
+	}
 
 	local job, grade = UnpackJob(target.job)
 
@@ -1493,29 +1498,36 @@ RegisterNetEvent('mdt:server:removeIncidentCriminal', function(cid, incident)
 end)
 
 -- Dispatch
-
 RegisterNetEvent('mdt:server:setWaypoint', function(callid)
 	local src = source
-	local Player = QBCore.Functions.GetPlayer(source)
+	local Player = QBCore.Functions.GetPlayer(src)
+	local callid = tonumber(callid)
 	local JobType = GetJobType(Player.PlayerData.job.name)
+	if not callid then return end
 	if JobType == 'police' or JobType == 'ambulance' then
-		if callid then
-			if isDispatchRunning then
-				TriggerClientEvent('mdt:client:setWaypoint', src, calls[callid])
+		if isDispatchRunning then
+			for i = 1, #calls do
+				if calls[i]['id'] == callid then
+					TriggerClientEvent('mdt:client:setWaypoint', src, calls[i])
+					return
+				end
 			end
 		end
 	end
 end)
 
-
 RegisterNetEvent('mdt:server:attachedUnits', function(callid)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     local JobType = GetJobType(Player.PlayerData.job.name)
+	if not callid then return end
     if JobType == 'police' or JobType == 'ambulance' then
-        if callid then
-            if isDispatchRunning then
-                TriggerClientEvent('mdt:client:attachedUnits', src, calls[callid]['units'], callid)
+        if isDispatchRunning then
+            for i = 1, #calls do
+                if calls[i]['id'] == callid then
+                    TriggerClientEvent('mdt:client:attachedUnits', src, calls[i]['units'], callid)
+                    return
+                end
             end
         end
     end
@@ -1526,15 +1538,17 @@ RegisterNetEvent('mdt:server:setDispatchWaypoint', function(callid, cid)
 	local Player = QBCore.Functions.GetPlayer(src)
 	local callid = tonumber(callid)
 	local JobType = GetJobType(Player.PlayerData.job.name)
+	if not callid then return end
 	if JobType == 'police' or JobType == 'ambulance' then
-		if callid then
-			if isDispatchRunning then
-				
-				TriggerClientEvent('mdt:client:setWaypoint', src, calls[callid])
+		if isDispatchRunning then
+			for i = 1, #calls do
+				if calls[i]['id'] == callid then
+					TriggerClientEvent('mdt:client:setWaypoint', src, calls[i])
+					return
+				end
 			end
 		end
 	end
-
 end)
 
 RegisterNetEvent('mdt:server:callDragAttach', function(callid, cid)
@@ -1863,8 +1877,8 @@ local function giveCitationItem(src, citizenId, fine, incidentId)
 	end
 	Player.Functions.AddItem('mdtcitation', 1, false, info)
 	TriggerClientEvent('QBCore:Notify', src, PlayerName.." (" ..citizenId.. ") received a citation!")
-	if Config.QBManagementUse then 
-		exports['qb-management']:AddMoney(Officer.PlayerData.job.name, fine) 
+	if Config.QBBankingUse then 
+		exports['qb-banking']:AddMoney(Officer.PlayerData.job.name, fine) 
 	end
 	TriggerClientEvent('inventory:client:ItemBox', Player.PlayerData.source, QBCore.Shared.Items['mdtcitation'], "add")
 	TriggerEvent('mdt:server:AddLog', "A Fine was writen by "..OfficerFullName.." and was sent to "..PlayerName..", the Amount was $".. fine ..". (ID: "..incidentId.. ")")
